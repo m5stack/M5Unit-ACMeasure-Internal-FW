@@ -337,6 +337,13 @@ void i2c1_receive_callback(uint8_t *rx_data, uint16_t len)
         flash_data_write_back();
       }
     }    
+    else if ((rx_data[0] >= 0xB0) && (rx_data[0] <= 0xB3)) {
+      if (len == 5) {
+        uint32_t temp = 0;
+        temp = (rx_data[1] | (rx_data[2] << 8) | (rx_data[3] << 16) | (rx_data[4] << 24));
+        DisplayTable[4] = (float)temp / 100.0;
+      }
+    }    
   }
 }
 /* USER CODE END 0 */
