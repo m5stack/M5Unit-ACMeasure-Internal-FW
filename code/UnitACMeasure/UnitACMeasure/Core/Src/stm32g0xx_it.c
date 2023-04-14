@@ -77,6 +77,7 @@ void Mycallback_handler(void)
     if (!hlw8032_check) {
       HAL_NVIC_SystemReset();
     }
+    HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
     for (int i = 2; i < 23; i++) {
       HLW8032_SumCheck += buffer[i];
     }
@@ -104,6 +105,8 @@ void Mycallback_handler(void)
       DisplayTable[4]=(float)Energy_CNT/1000000000*Power_Parameter_REG*voltage_current_factor/3600;//电能 
       memset(buffer, 0, sizeof(buffer));
     }
+  } else {
+    HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
   }
 }
 
