@@ -50,6 +50,7 @@ unsigned long Power_Parameter_REG=0; //功率参数
 unsigned long Power_REG=0;//功率
 unsigned int Energy_count=0;
 unsigned char DATA_REG_BIT7=0;  //数据更新寄存器BIT7
+unsigned char data_ready=0;
 
 float DisplayTable[6];
 /* USER CODE END PV */
@@ -78,6 +79,7 @@ void Mycallback_handler(void)
       HAL_NVIC_SystemReset();
     }
     HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+    data_ready = 1;
     for (int i = 2; i < 23; i++) {
       HLW8032_SumCheck += buffer[i];
     }
@@ -107,6 +109,7 @@ void Mycallback_handler(void)
     }
   } else {
     HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+    data_ready = 0;
   }
 }
 

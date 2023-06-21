@@ -49,6 +49,7 @@ extern I2C_HandleTypeDef hi2c1;
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 extern float DisplayTable[6];
+extern unsigned char data_ready;
 extern uint8_t voltage_factor;
 extern uint8_t current_factor;
 extern float voltage_factor_float;

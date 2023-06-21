@@ -52,6 +52,9 @@ UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
 
 /* USER CODE BEGIN PV */
+volatile uint8_t flag_jump_bootloader = 0;
+volatile uint32_t jump_bootloader_timeout = 0;
+
 volatile uint8_t fm_version = FIRMWARE_VERSION;
 uint8_t flash_data[FLASH_DATA_SIZE] = {0};
 uint8_t i2c_address[1] = {0};
@@ -97,6 +100,24 @@ void IAP_Set()
     /* Remap SRAM at 0x00000000 */
     SYSCFG->CFG1_B.MMSEL = SYSCFG_MemoryRemap_SRAM;
 #endif
+}
+
+void i2c_port_set_to_input(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : LED_Pin */
+  GPIO_InitStruct.Pin = (GPIO_PIN_8 | GPIO_PIN_9);
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
 void user_i2c_init(void)
@@ -194,11 +215,11 @@ void i2c1_receive_callback(uint8_t *rx_data, uint16_t len)
     }     
     else if((rx_data[0] >= 0x80) && (rx_data[0] <= 0x81)) {
       uint32_dis_value = (uint32_t)(DisplayTable[2] * 100);
-      i2c1_set_send_data((uint8_t *)&uint32_dis_value, 2);
+      i2c1_set_send_data((uint8_t *)&uint32_dis_value, 4);
     }     
     else if((rx_data[0] >= 0x90) && (rx_data[0] <= 0x91)) {
       uint32_dis_value = (uint32_t)(DisplayTable[5] * 100);
-      i2c1_set_send_data((uint8_t *)&uint32_dis_value, 2);
+      i2c1_set_send_data((uint8_t *)&uint32_dis_value, 4);
     }     
     else if(rx_data[0] == 0xA0) {
       uint32_dis_value = (uint32_t)(DisplayTable[3] * 100);
@@ -315,6 +336,10 @@ void i2c1_receive_callback(uint8_t *rx_data, uint16_t len)
     {
       i2c1_set_send_data(i2c_address, 1);
     }                     
+    else if (rx_data[0] == 0xFC)
+    {
+      i2c1_set_send_data((uint8_t *)&data_ready, 1);
+    }                     
   } else if (len > 1) {
     if(rx_data[0] == 0xC0) {
       voltage_factor = rx_data[1];
@@ -342,6 +367,11 @@ void i2c1_receive_callback(uint8_t *rx_data, uint16_t len)
         uint32_t temp = 0;
         temp = (rx_data[1] | (rx_data[2] << 8) | (rx_data[3] << 16) | (rx_data[4] << 24));
         DisplayTable[4] = (float)temp / 100.0;
+      }
+    }
+    else if (rx_data[0] == 0xFD) {
+      if (rx_data[1] == 1) {
+        flag_jump_bootloader = 1;
       }
     }    
   }
@@ -391,6 +421,24 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    if (flag_jump_bootloader) {
+      HAL_I2C_DeInit(&hi2c1);  
+      i2c_port_set_to_input();
+      while (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8) || HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9))
+      {
+        jump_bootloader_timeout++;
+        if (jump_bootloader_timeout >= 60000) {
+          flag_jump_bootloader = 0;
+          break;
+        }
+      }
+      if (jump_bootloader_timeout < 60000) {
+        HAL_NVIC_SystemReset();
+      } else {
+        user_i2c_init();
+        jump_bootloader_timeout = 0;
+      }
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
